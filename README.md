@@ -30,7 +30,7 @@ This project focuses on **interactive pronunciation practice** using browser-bas
 
 ## Live Demo
 After enabling GitHub Pages, the project can be accessed directly via the browser:
-
+https://byshad00.github.io/PronAI/
 
 ---
 
