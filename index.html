@@ -1,0 +1,631 @@
+ <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>PronAI — AI Pronunciation Coach</title>
+  <style>
+    :root{
+      --bg1:#0b1020; --bg2:#111a33;
+      --card:rgba(18,26,43,.78);
+      --stroke:rgba(44,58,99,.7);
+      --text:#e9eefc; --muted:#aeb9df;
+      --accent:#7c5cff; --accent2:#33d6ff;
+      --good:#35d07f; --warn:#ffcc66; --bad:#ff5a7a;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% 20%, rgba(124,92,255,.35), transparent 60%),
+        radial-gradient(1000px 500px at 80% 10%, rgba(51,214,255,.25), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
+      padding:22px;
+    }
+    .app{ width:min(1020px,100%); display:grid; grid-template-columns:390px 1fr; gap:18px; }
+    @media (max-width: 900px){ .app{grid-template-columns:1fr} }
+
+    .card{
+      background: var(--card);
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .header{
+      padding:18px 18px 14px;
+      border-bottom:1px solid rgba(44,58,99,.55);
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    }
+    .title{display:flex; flex-direction:column; gap:4px;}
+    .title h1{font-size:18px; margin:0;}
+    .title p{margin:0; color:var(--muted); font-size:13px;}
+    .pill{
+      font-size:12px; padding:8px 10px; border-radius:999px;
+      border:1px solid rgba(44,58,99,.7);
+      background: rgba(17,26,51,.6);
+      color:var(--muted); white-space:nowrap;
+    }
+    .content{padding:16px 18px 18px;}
+
+    /* Robot */
+    .robotWrap{display:flex; justify-content:center; padding:18px 0 10px;}
+    .robot{
+      width:220px; height:220px; position:relative; animation: floaty 4.2s ease-in-out infinite;
+      transform-origin:center;
+    }
+    @keyframes floaty{0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)}}
+    .head{
+      position:absolute; inset:22px 24px auto 24px; height:140px; border-radius:26px;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      border:1px solid rgba(124,92,255,.35);
+    }
+    .visor{
+      position:absolute; left:16px; right:16px; top:32px; height:54px; border-radius:18px;
+      background: linear-gradient(90deg, rgba(124,92,255,.22), rgba(51,214,255,.18));
+      border:1px solid rgba(51,214,255,.25);
+      overflow:hidden;
+    }
+    .eyes{position:absolute; top:46px; left:0; right:0; display:flex; justify-content:center; gap:22px;}
+    .eye{width:18px; height:18px; border-radius:50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(51,214,255,.95));
+      box-shadow: 0 0 18px rgba(51,214,255,.45);
+      position:relative;
+    }
+    .eye::after{content:""; position:absolute; inset:4px; border-radius:50%; background: rgba(10,16,32,.55);}
+    .mouth{
+      position:absolute; left:50%; top:100px; transform:translateX(-50%);
+      width:86px; height:16px; border-radius:999px;
+      border:1px solid rgba(44,58,99,.75);
+      background: rgba(10,16,32,.35);
+      overflow:hidden;
+    }
+    .wave{position:absolute; inset:0; opacity:0;
+      background: linear-gradient(90deg, rgba(124,92,255,.0), rgba(124,92,255,.55), rgba(51,214,255,.55), rgba(51,214,255,.0));
+      transform: translateX(-80%);
+    }
+    .robot.speaking .wave{opacity:1; animation: wave 1.05s linear infinite;}
+    @keyframes wave{0%{transform:translateX(-80%)} 100%{transform:translateX(80%)}}
+    .body{
+      position:absolute; inset:auto 46px 28px 46px; height:70px; border-radius:18px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(44,58,99,.6);
+    }
+    .badge{
+      position:absolute; left:14px; top:14px; padding:6px 10px; border-radius:999px;
+      font-size:12px; background: rgba(124,92,255,.18); border:1px solid rgba(124,92,255,.28); color:var(--muted);
+    }
+
+    /* Stepper */
+    .stepper{
+      margin-top:10px;
+      border:1px solid rgba(44,58,99,.55);
+      background: rgba(10,16,32,.25);
+      border-radius: 14px;
+      padding:12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    @media (max-width:900px){ .stepper{grid-template-columns:1fr;} }
+    .step{
+      border:1px solid rgba(44,58,99,.55);
+      border-radius: 12px;
+      padding:10px;
+      background: rgba(18,26,43,.35);
+      display:flex; gap:10px; align-items:center;
+      color: var(--muted);
+      font-size:12px;
+      font-weight:700;
+    }
+    .stepNum{
+      width:24px; height:24px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(44,58,99,.55);
+      color: var(--text);
+      font-weight:900;
+    }
+    .step.active{
+      color: var(--text);
+      border-color: rgba(51,214,255,.35);
+      box-shadow: 0 0 0 3px rgba(51,214,255,.10);
+    }
+    .step.done{
+      color: var(--text);
+      border-color: rgba(53,208,127,.35);
+      box-shadow: 0 0 0 3px rgba(53,208,127,.10);
+    }
+
+    /* Controls */
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr;} }
+    label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
+    select, input{
+      width:100%; padding:11px 12px; border-radius:12px;
+      border:1px solid rgba(44,58,99,.7);
+      background: rgba(10,16,32,.35); color:var(--text); outline:none;
+    }
+    .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;}
+    button{
+      border:0; padding:11px 14px; border-radius:12px; cursor:pointer;
+      color:#0b1020; font-weight:900;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      box-shadow: 0 10px 26px rgba(124,92,255,.22);
+    }
+    button.secondary{background: rgba(10,16,32,.35); color:var(--text); border:1px solid rgba(44,58,99,.7); box-shadow:none; font-weight:800;}
+    button:active{transform: translateY(1px);}
+
+    /* Right panel */
+    .right{padding:16px 18px 18px; display:flex; flex-direction:column; gap:12px; height:560px;}
+    @media (max-width: 900px){ .right{height:auto;} }
+    .panel{
+      border:1px solid rgba(44,58,99,.55);
+      background: rgba(10,16,32,.25);
+      border-radius: var(--radius);
+      padding:14px;
+    }
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center;}
+    .big{font-size:26px; font-weight:900; letter-spacing:.2px;}
+    .bigResult{font-size:20px; font-weight:1000;}
+    .tag{
+      font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid rgba(44,58,99,.6);
+      color:var(--muted); background: rgba(17,26,51,.45);
+    }
+    .statusBox{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;}
+    @media (max-width:900px){ .statusBox{grid-template-columns:1fr;} }
+    .stat{
+      border:1px solid rgba(44,58,99,.55);
+      background: rgba(18,26,43,.45);
+      border-radius: 14px;
+      padding:12px;
+    }
+    .stat h3{margin:0 0 6px; font-size:12px; color:var(--muted); font-weight:800;}
+    .stat .v{font-size:14px; font-weight:900;}
+    .scoreBar{
+      height:10px; border-radius:999px; background: rgba(255,255,255,.08);
+      overflow:hidden; margin-top:8px; border:1px solid rgba(44,58,99,.5);
+    }
+    .scoreFill{height:100%; width:0%; background: linear-gradient(90deg, var(--bad), var(--warn), var(--good));}
+    .chatArea{flex:1; overflow:auto;}
+    .bubble{
+      max-width: 88%;
+      padding:10px 12px;
+      border-radius: 16px;
+      margin: 8px 0;
+      line-height:1.35;
+      font-size:14px;
+      border:1px solid rgba(44,58,99,.5);
+      white-space: pre-wrap;
+    }
+    .bubble.user{margin-left:auto; background: rgba(124,92,255,.14); border-color: rgba(124,92,255,.28);}
+    .bubble.bot{margin-right:auto; background: rgba(51,214,255,.10); border-color: rgba(51,214,255,.22);}
+    .meta{font-size:12px; color:var(--muted); display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+
+    /* Result highlight + micro animation */
+    .resultGood{ color: var(--good); }
+    .resultWarn{ color: var(--warn); }
+    .resultBad{  color: var(--bad);  }
+
+    .flashGood{ animation: flashGood .6s ease; }
+    @keyframes flashGood{
+      0%{ box-shadow: 0 0 0 0 rgba(53,208,127,.0); }
+      40%{ box-shadow: 0 0 0 6px rgba(53,208,127,.18); }
+      100%{ box-shadow: 0 0 0 0 rgba(53,208,127,.0); }
+    }
+    .shake{ animation: shake .35s ease; }
+    @keyframes shake{
+      0%{ transform: translateX(0); }
+      25%{ transform: translateX(-6px); }
+      50%{ transform: translateX(6px); }
+      75%{ transform: translateX(-4px); }
+      100%{ transform: translateX(0); }
+    }
+
+    /* Footer */
+    .footer{
+      margin-top:12px;
+      border-top:1px solid rgba(44,58,99,.45);
+      padding-top:12px;
+      font-size:12px;
+      color: var(--muted);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- LEFT: Robot + Controls -->
+    <div class="card">
+      <div class="header">
+        <div class="title">
+          <h1>PronAI </h1>
+          <p>AI Pronunciation Coach — Listen. Speak. Improve.</p>
+        </div>
+        <div class="pill">Step-by-step practice</div>
+      </div>
+
+      <div class="content">
+        <div class="robotWrap">
+          <div id="robot" class="robot">
+            <div class="head">
+              <div class="visor"></div>
+              <div class="eyes"><div class="eye"></div><div class="eye"></div></div>
+              <div class="mouth"><div class="wave"></div></div>
+            </div>
+            <div class="body"><div class="badge">AI Voice</div></div>
+          </div>
+        </div>
+
+        <!-- Stepper -->
+        <div class="stepper" aria-label="steps">
+          <div id="step1" class="step active"><div class="stepNum">1</div>Choose a target</div>
+          <div id="step2" class="step"><div class="stepNum">2</div>Listen</div>
+          <div id="step3" class="step"><div class="stepNum">3</div>Speak & get feedback</div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label for="mode">Mode</label>
+            <select id="mode">
+              <option value="word" selected>Word Practice</option>
+              <option value="sentence">Sentence Practice</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="level">Student Level</label>
+            <select id="level">
+              <option value="beginner" selected>Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="accent">Accent</label>
+            <select id="accent">
+              <option value="en-US" selected>American (en-US)</option>
+              <option value="en-GB">British (en-GB)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="speed">Speech Speed</label>
+            <select id="speed">
+              <option value="0.9">Slow</option>
+              <option value="1" selected>Normal</option>
+              <option value="1.1">Fast</option>
+            </select>
+          </div>
+
+          <div style="grid-column:1/-1;">
+            <label for="targetInput">Target Word / Sentence (optional)</label>
+            <input id="targetInput" placeholder='Type your own target (e.g., "beautiful" or "I like coffee").' />
+          </div>
+        </div>
+
+        <!-- ✅ ONLY 3 BUTTONS -->
+        <div class="btnRow">
+          <button onclick="startSession()">▶️ Start</button>
+          <button class="secondary" onclick="startListening()">🎙️ Listen</button>
+          <button class="secondary" onclick="resetAll()">🔄 Reset</button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+          <span>PronAI — AI Pronunciation Coach</span>
+          <span>Developed by Shahad Al-Shammari | AI Student</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Feedback + Chat -->
+    <div class="card">
+      <div class="header">
+        <div class="title">
+          <h1>Pronunciation Feedback</h1>
+          <p>Instant feedback for practice</p>
+        </div>
+        <div class="pill">Demo for institute</div>
+      </div>
+
+      <div class="right">
+        <div id="topPanel" class="panel">
+          <div class="row" style="justify-content:space-between;">
+            <div>
+              <div class="tag">Target</div>
+              <div id="targetText" class="big">—</div>
+            </div>
+            <div>
+              <div class="tag">You said</div>
+              <div id="saidText" class="big">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel statusBox">
+          <div class="stat">
+            <h3>Score</h3>
+            <div class="v"><span id="scoreNum">0</span>%</div>
+            <div class="scoreBar"><div id="scoreFill" class="scoreFill"></div></div>
+          </div>
+
+          <div class="stat">
+            <h3>Result</h3>
+            <div class="v bigResult" id="resultText">Waiting…</div>
+          </div>
+
+          <div class="stat">
+            <h3>Progress</h3>
+            <div class="v" id="progressText">Attempts: 0 | Correct: 0</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="tag">Coach Tip</div>
+          <div class="v" id="tipText" style="margin-top:8px;">Click “Start” to begin.</div>
+        </div>
+
+        <div class="panel chatArea" id="chatArea"></div>
+
+        <div class="meta">
+          <span>Best on Chrome/Edge</span>
+          <span>SpeechRecognition + Text-to-Speech</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const robotEl = document.getElementById("robot");
+    const chatArea = document.getElementById("chatArea");
+
+    const targetTextEl = document.getElementById("targetText");
+    const saidTextEl = document.getElementById("saidText");
+    const scoreNumEl = document.getElementById("scoreNum");
+    const scoreFillEl = document.getElementById("scoreFill");
+    const resultTextEl = document.getElementById("resultText");
+    const tipTextEl = document.getElementById("tipText");
+    const progressTextEl = document.getElementById("progressText");
+    const topPanelEl = document.getElementById("topPanel");
+
+    const step1El = document.getElementById("step1");
+    const step2El = document.getElementById("step2");
+    const step3El = document.getElementById("step3");
+
+    let target = "";
+
+    let attempts = 0;
+    let correct = 0;
+
+    const words = {
+      beginner: ["hello","coffee","apple","school","teacher","happy","today","please","sorry","thank you"],
+      intermediate: ["beautiful","comfortable","important","favorite","practice","confident","conversation","pronunciation"],
+      advanced: ["responsibility","opportunity","communication","consistency","extraordinary","particularly","improvement"]
+    };
+
+    const sentences = {
+      beginner: [
+        "I like coffee.",
+        
+        "I am a student.",
+        "This is my book."
+      ],
+      intermediate: [
+        "I want to improve my English speaking.",
+        "I practice English every day because I want to be confident.",
+        "Traveling helps me learn new cultures."
+      ],
+      advanced: [
+        "I’m working on improving my pronunciation and fluency through daily practice.",
+        "Learning consistently helps me communicate more clearly and confidently.",
+        "I would like to express my ideas in a natural and professional way."
+      ]
+    };
+
+    function addBubble(text, who="bot"){
+      const div = document.createElement("div");
+      div.className = `bubble ${who}`;
+      div.textContent = text;
+      chatArea.appendChild(div);
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    function speakText(text){
+      const accent = document.getElementById("accent").value;
+      const speed = parseFloat(document.getElementById("speed").value);
+
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = accent;
+      u.rate = speed;
+
+      robotEl.classList.add("speaking");
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+
+      u.onend = () => robotEl.classList.remove("speaking");
+      u.onerror = () => robotEl.classList.remove("speaking");
+    }
+
+    function normalize(str){
+      return (str || "")
+        .toLowerCase()
+        .replace(/[^\w\s']/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function similarityScore(a, b){
+      const A = new Set(normalize(a).split(" ").filter(Boolean));
+      const B = new Set(normalize(b).split(" ").filter(Boolean));
+      if(A.size === 0 || B.size === 0) return 0;
+
+      let inter = 0;
+      for(const w of A) if(B.has(w)) inter++;
+      return inter / Math.max(A.size, B.size);
+    }
+
+    function setScore(pct){
+      const p = Math.max(0, Math.min(100, pct));
+      scoreNumEl.textContent = String(Math.round(p));
+      scoreFillEl.style.width = `${p}%`;
+    }
+
+    function updateProgress(){
+      progressTextEl.textContent = `Attempts: ${attempts} | Correct: ${correct}`;
+    }
+
+    function setResult(score){
+      resultTextEl.classList.remove("resultGood","resultWarn","resultBad");
+      topPanelEl.classList.remove("flashGood","shake");
+
+      if(score >= 0.8){
+        resultTextEl.textContent = "✅ Correct!";
+        resultTextEl.classList.add("resultGood");
+        tipTextEl.textContent = "Great! Click Start for a new target.";
+        topPanelEl.classList.add("flashGood");
+      } else if(score >= 0.55){
+        resultTextEl.textContent = "⚠️ Almost!";
+        resultTextEl.classList.add("resultWarn");
+        tipTextEl.textContent = "Try again: click Listen and speak clearly.";
+      } else {
+        resultTextEl.textContent = "❌ Try again";
+        resultTextEl.classList.add("resultBad");
+        tipTextEl.textContent = "Click Listen, then repeat after the robot.";
+        topPanelEl.classList.add("shake");
+      }
+    }
+
+    function markSteps(state){
+      [step1El, step2El, step3El].forEach(s => s.classList.remove("active","done"));
+      if(state === 0){
+        step1El.classList.add("active");
+      } else if(state === 1){
+        step1El.classList.add("done");
+        step2El.classList.add("active");
+      } else {
+        step1El.classList.add("done");
+        step2El.classList.add("done");
+        step3El.classList.add("active");
+      }
+    }
+
+    // ✅ Start button
+    function startSession(){
+      const mode = document.getElementById("mode").value;
+      const lvl = document.getElementById("level").value;
+
+      const typed = document.getElementById("targetInput").value.trim();
+      if(typed){
+        target = typed;
+      } else {
+        if(mode === "word"){
+          const list = words[lvl] || words.beginner;
+          target = list[Math.floor(Math.random() * list.length)];
+        } else {
+          const list = sentences[lvl] || sentences.beginner;
+          target = list[Math.floor(Math.random() * list.length)];
+        }
+      }
+
+      targetTextEl.textContent = target;
+      saidTextEl.textContent = "—";
+      setScore(0);
+      resultTextEl.textContent = "Waiting…";
+      tipTextEl.textContent = "Now click Listen and speak.";
+      addBubble(`Target: "${target}"`, "bot");
+
+      markSteps(1);        // show "Listen" step
+      speakText(target);   // robot speaks
+    }
+
+    // ✅ Listen button
+    function startListening(){
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!SR){
+        addBubble("Speech Recognition is not supported. Use Chrome/Edge.", "bot");
+        return;
+      }
+      if(!target){
+        addBubble("Click Start first to set a target.", "bot");
+        tipTextEl.textContent = "Click Start first.";
+        markSteps(0);
+        return;
+      }
+
+      const accent = document.getElementById("accent").value;
+      const recognition = new SR();
+      recognition.lang = accent;
+      recognition.interimResults = false;
+
+      addBubble("Listening…", "bot");
+      markSteps(2);
+
+      recognition.onresult = (event) => {
+        const spoken = event.results[0][0].transcript;
+
+        saidTextEl.textContent = spoken;
+        addBubble(`You said: "${spoken}"`, "user");
+
+        const s = similarityScore(spoken, target);
+        const pct = s * 100;
+
+        setScore(pct);
+        setResult(s);
+
+        attempts += 1;
+        if(s >= 0.8) correct += 1;
+        updateProgress();
+
+        addBubble(`Score: ${Math.round(pct)}% — ${resultTextEl.textContent}`, "bot");
+
+        // replay correct pronunciation
+        speakText(target);
+
+        // back to start step for next round
+        markSteps(0);
+      };
+
+      recognition.onerror = () => addBubble("I couldn't hear clearly. Please try again.", "bot");
+      recognition.start();
+    }
+
+    // ✅ Reset button
+    function resetAll(){
+      target = "";
+      attempts = 0;
+      correct = 0;
+      updateProgress();
+
+      targetTextEl.textContent = "—";
+      saidTextEl.textContent = "—";
+      setScore(0);
+      resultTextEl.textContent = "Waiting…";
+      tipTextEl.textContent = "Click “Start” to begin.";
+      chatArea.innerHTML = "";
+
+      markSteps(0);
+      addBubble("Reset done.", "bot");
+    }
+
+    // init
+    updateProgress();
+    markSteps(0);
+    addBubble("Welcome to PronAI! Click Start to begin.", "bot");
+  </script>
+</body>
+</html>
